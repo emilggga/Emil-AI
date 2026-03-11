@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, Trash2, Plus, Menu, X, Github, ExternalLink, Paperclip, Image as ImageIcon, FileText, Music, Video, XCircle } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Trash2, Plus, Menu, X, Github, ExternalLink, Paperclip, Image as ImageIcon, FileText, Music, Video, XCircle, Settings, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
@@ -28,6 +28,8 @@ export default function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem('emil_api_key') || '');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +41,12 @@ export default function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const saveApiKey = (key: string) => {
+    setCustomApiKey(key);
+    localStorage.setItem('emil_api_key', key);
+    setIsSettingsOpen(false);
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -105,27 +113,33 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const assistantMessage: Message = { role: 'model', content: '' };
+      const assistantMessage: Message = { role: 'assistant' as any, content: '' };
       setMessages(prev => [...prev, assistantMessage]);
 
       let fullResponse = '';
-      const stream = chatWithEmilStream(newMessages);
+      const stream = chatWithEmilStream(newMessages, customApiKey);
 
       for await (const chunk of stream) {
         if (chunk) {
           fullResponse += chunk;
           setMessages(prev => {
             const updated = [...prev];
-            updated[updated.length - 1] = { role: 'model', content: fullResponse };
+            updated[updated.length - 1] = { role: 'assistant' as any, content: fullResponse };
             return updated;
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error chatting with Emil:', error);
+      let errorMessage = 'Atvainojiet, radās kļūda. Lūdzu, mēģiniet vēlreiz.';
+      
+      if (error.message === 'API_KEY_MISSING') {
+        errorMessage = 'Kļūda: Nav atrasta API atslēga. Lūdzu, ievadiet to iestatījumos (zobrata ikona augšā) vai pārbaudiet Vercel Environment Variables.';
+      }
+      
       setMessages(prev => [
         ...prev,
-        { role: 'model', content: 'Atvainojiet, radās kļūda. Lūdzu, mēģiniet vēlreiz.' }
+        { role: 'assistant' as any, content: errorMessage }
       ]);
     } finally {
       setIsLoading(false);
@@ -204,6 +218,13 @@ export default function App() {
               <div className="w-2 h-2 bg-[#9E1B32] rounded-full animate-pulse" />
               <span className="text-[10px] font-bold text-[#9E1B32] uppercase tracking-widest">Sistēma Tiešsaistē</span>
             </div>
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
+              title="Iestatījumi"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
             <button 
               onClick={clearChat}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-[#9E1B32] transition-colors"
@@ -405,6 +426,65 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-[#2a1014] border border-[#9E1B32]/30 rounded-3xl p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-[#9E1B32]" />
+                  <h3 className="text-xl font-bold">Iestatījumi</h3>
+                </div>
+                <button onClick={() => setIsSettingsOpen(false)} className="p-1 hover:bg-white/5 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                    <Key className="w-4 h-4" />
+                    OpenRouter API atslēga
+                  </label>
+                  <input 
+                    type="password"
+                    value={customApiKey}
+                    onChange={(e) => setCustomApiKey(e.target.value)}
+                    placeholder="sk-or-v1-..."
+                    className="w-full bg-black/20 border border-[#9E1B32]/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#9E1B32]/50 transition-all"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-2">
+                    Jūsu atslēga tiek glabāta tikai jūsu pārlūkprogrammā.
+                  </p>
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    onClick={() => saveApiKey(customApiKey)}
+                    className="w-full py-3 bg-[#9E1B32] hover:bg-[#7d1528] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#9E1B32]/20"
+                  >
+                    Saglabāt
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Overlay for Mobile Sidebar */}
       {isSidebarOpen && (

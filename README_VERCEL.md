@@ -18,11 +18,17 @@ Vercel should automatically detect **Vite**. If not, use these settings:
 
 ## 4. Set Environment Variables 🔑
 This is the most important step! In the **"Environment Variables"** section, add:
-- **Key:** `GEMINI_API_KEY`
-- **Value:** (Your Google AI Studio API Key)
+- **Key:** `OPENROUTER_API_KEY`
+- **Value:** (Your OpenRouter API Key)
 
 ## 5. Deploy
 Click **"Deploy"**. Vercel will build your app and provide you with a public URL.
+
+## ⚠️ Troubleshooting: "API key is missing"
+If you see an error saying the API key is missing after deploying:
+1. Go to your Project Settings in Vercel.
+2. Ensure `OPENROUTER_API_KEY` is added correctly.
+3. **IMPORTANT:** You must trigger a **new deployment** for the changes to take effect. Go to the "Deployments" tab, click the three dots on your latest deployment, and select **"Redeploy"**.
 
 ---
 
